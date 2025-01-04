@@ -5,8 +5,34 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 	"unicode/utf8"
 )
+
+func ReplacePath(filePath, oldPath string, newPath string) error {
+	file, err := os.OpenFile(filePath, os.O_RDWR, 0644)
+	if err != nil {
+		return fmt.Errorf("failed to open file for reading: %v", err)
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	writer := bufio.NewWriter(file)
+	for scanner.Scan() {
+		updatedLine := strings.ReplaceAll(scanner.Text(), oldPath, newPath)
+		_, err := writer.WriteString(updatedLine + "\n")
+		if err != nil {
+			return fmt.Errorf("failed to write updated line: %v", err)
+		}
+	}
+	if err := scanner.Err(); err != nil {
+		return fmt.Errorf("error reading file: %v", err)
+	}
+	if err := writer.Flush(); err != nil {
+		return fmt.Errorf("failed to flush content file: %v", err)
+	}
+	return nil
+}
 
 func Copy(path string, destinationPath string) error {
 	file, err := os.Open(path)

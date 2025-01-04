@@ -5,8 +5,55 @@ import (
 	"crypto/sha256"
 	"io"
 	"os"
+	"strings"
 	"testing"
 )
+
+func TestReplacePath(t *testing.T) {
+	t.Run("Valid path replacement", func(t *testing.T) {
+		file, _ := os.CreateTemp("", "test_file_*.txt")
+		defer os.Remove(file.Name())
+
+		content := "This is a test file with a path /old/path."
+		file.WriteString(content)
+		file.Close()
+
+		err := ReplacePath(file.Name(), "/old/path", "/new/path")
+		if err != nil {
+			t.Fatalf("Expected no error, got %v", err)
+		}
+		updatedContent, _ := os.ReadFile(file.Name())
+		if !strings.Contains(string(updatedContent), "/new/path") {
+			t.Errorf("Expected updated path, got %s", string(updatedContent))
+		}
+	})
+	t.Run("File does not exist", func(t *testing.T) {
+		file := "non_existent_file.txt"
+		err := ReplacePath(file, "/old/path", "/new/path")
+		if err == nil {
+			t.Errorf("Expected an error, got nil")
+		}
+	})
+	t.Run("Error writing updated line", func(t *testing.T) {
+		file, _ := os.CreateTemp("", "test_file_*.txt")
+		defer os.Remove(file.Name())
+
+		content := "This is a test file with a path /old/path."
+		file.WriteString(content)
+		file.Close()
+
+		// Read-only
+		os.Chmod(file.Name(), 0444)
+
+		err := ReplacePath(file.Name(), "/old/path", "/new/path")
+		if err == nil {
+			t.Errorf("Expected an error, got nil")
+		}
+
+		// Restore
+		os.Chmod(file.Name(), 0644)
+	})
+}
 
 func TestIsTextFile(t *testing.T) {
 	srcFile, _ := os.CreateTemp("", "valid_text_file_src_*.txt")
